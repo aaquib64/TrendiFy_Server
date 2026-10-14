@@ -38,9 +38,8 @@ const ProductSchema = mongoose.Schema({
     type: Number,
     required: true,
   },
-  Color: {
-    type: String,
-    required: true,
+  color: { type: [String], required: true 
+    
   },
   material: {
     type: String,

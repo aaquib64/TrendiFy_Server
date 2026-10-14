@@ -31,13 +31,10 @@ app.use("/", routes);
 
 const uri = process.env.MONGODB_URI;
    
-console.log('MongoDB URI:', process.env.MONGODB_URI)
+console.log("MongoDB URI loaded:", !!process.env.MONGODB_URI);
 
    mongoose
-    .connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
+    .connect(uri)
   .then(() => console.log(" MongoDB Connected Successfully"))
   .catch((err) => console.error(" MongoDB Connection Error:", err));
 

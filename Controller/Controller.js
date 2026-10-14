@@ -1,7 +1,8 @@
 const AllProducts = require("../Models/Model");
-const User = require ("../Models/User");
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const User = require("../Models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const Order = require("../Models/Order");
 
 // For All Products
 
@@ -31,14 +32,15 @@ exports.getAllProducts = async (req, res) => {
     if (products.length > 0) {
       res.status(200).json(products);
     } else {
-      res.status(404).json({ message: 'No Products found' });
+      res.status(404).json({ message: "No Products found" });
     }
   } catch (error) {
-    console.error('Error fetching Products:', error);
-    res.status(500).json({ message: 'Error fetching Products', error: error.message });
+    console.error("Error fetching Products:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching Products", error: error.message });
   }
 };
-
 
 // Product By Id
 exports.getProductsById = async (req, res) => {
@@ -47,21 +49,21 @@ exports.getProductsById = async (req, res) => {
   const ProductId = req.params.id;
 
   try {
-      const Product = await AllProducts.findOne( {id: parseInt(ProductId)});
-      
-      if (Product) {
-          res.status(200).json({ Product: Product });
-      } else {
-          res.status(404).json({
-              message: "Product not found"
-          });
-      }
-  } catch (error) {
-      console.error('Error fetching Products by ID:', error);
-      res.status(500).json({
-          message: 'Error fetching Products by ID',
-          error: error.message
+    const Product = await AllProducts.findOne({ id: parseInt(ProductId) });
+
+    if (Product) {
+      res.status(200).json({ Product: Product });
+    } else {
+      res.status(404).json({
+        message: "Product not found",
       });
+    }
+  } catch (error) {
+    console.error("Error fetching Products by ID:", error);
+    res.status(500).json({
+      message: "Error fetching Products by ID",
+      error: error.message,
+    });
   }
 };
 
@@ -70,7 +72,7 @@ exports.getAllProductstByName = async (req, res) => {
   try {
     const name = req.params.name;
     const ProductsByName = AllProducts.filter(
-      (product) => product.name === name
+      (product) => product.name === name,
     );
 
     if (ProductsByName.length === 0) {
@@ -85,32 +87,60 @@ exports.getAllProductstByName = async (req, res) => {
   }
 };
 
-
 //  Products By gender
 
+// exports.getAllProductByGender = async (req, res) => {
+//   try {
+//     const gender = req.params.gender;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     // Case-insensitive match for gender
+//     const query = { gender: { $regex: `^${gender}$`, $options: 'i' } };
+
+//     const total = await AllProducts.countDocuments(query);
+//     const products = await AllProducts.find(query).skip(skip).limit(limit);
+
+//     res.status(200).json({
+//       products,
+//       currentPage: page,
+//       totalPages: Math.ceil(total / limit),
+//       totalProducts: total,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching products by gender:', error);
+//     res.status(500).json({
+//       message: 'Error fetching products by gender',
+//       error: error.message,
+//     });
+//   }
+// };
+
+// search by 03-06-26
 exports.getAllProductByGender = async (req, res) => {
   try {
-    const gender = req.params.gender;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const keyword = req.params.keyword;
 
-    // Case-insensitive match for gender
-    const query = { gender: { $regex: `^${gender}$`, $options: 'i' } };
+    const products = await AllProducts.find({
+      $or: [
+        { gender: { $regex: keyword, $options: "i" } },
+        { category: { $regex: keyword, $options: "i" } },
+        { name: { $regex: keyword, $options: "i" } },
+        { brand: { $regex: keyword, $options: "i" } },
+      ],
+    });
 
-    const total = await AllProducts.countDocuments(query);
-    const products = await AllProducts.find(query).skip(skip).limit(limit);
+    console.log(products);
 
     res.status(200).json({
       products,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      totalProducts: total,
     });
   } catch (error) {
-    console.error('Error fetching products by gender:', error);
+    console.error(error);
+
     res.status(500).json({
-      message: 'Error fetching products by gender',
+      message: "Error fetching products",
       error: error.message,
     });
   }
@@ -122,7 +152,6 @@ exports.getAllProductByGender = async (req, res) => {
 //   // Query the database for Products that match the gender
 //   AllProducts.find({ gender: { $regex: `^${gender}$`, $options: 'i' } })  // This uses case-insensitive regex to match gender
 //       .then((ProductsBygender) => {
-         
 
 //           if (ProductsBygender.length > 0) {
 //               res.status(200).json({ AllProducts: ProductsBygender });
@@ -141,55 +170,109 @@ exports.getAllProductByGender = async (req, res) => {
 //       });
 // };
 
-
 // Products By category
 exports.getAllProductsByCategory = (req, res) => {
   const category = req.params.category;
   const gender = req.params.gender;
 
   // Query the database for products that match the category
-  AllProducts.find({ 
-    gender: { $regex: `^${gender}$`, $options: 'i' }, 
-    category: { $regex: `^${category}$`, $options: 'i' } 
-  })  // This uses case-insensitive regex to match gender
-      .then((ProductsByCategory) => {
-         
-
-          if (ProductsByCategory.length > 0) {
-              res.status(200).json({ AllProducts: ProductsByCategory });
-          } else {
-              res.status(404).json({
-                  message: "No products found for the provided category"
-              });
-          }
-      })
-      .catch((error) => {
-          console.error('Error fetching products by category:', error);
-          res.status(500).json({
-              message: 'Error fetching products',
-              error: error.message
-          });
+  AllProducts.find({
+    gender: { $regex: `^${gender}$`, $options: "i" },
+    category: { $regex: `^${category}$`, $options: "i" },
+  }) // This uses case-insensitive regex to match gender
+    .then((ProductsByCategory) => {
+      if (ProductsByCategory.length > 0) {
+        res.status(200).json({ AllProducts: ProductsByCategory });
+      } else {
+        res.status(404).json({
+          message: "No products found for the provided category",
+        });
+      }
+    })
+    .catch((error) => {
+      console.error("Error fetching products by category:", error);
+      res.status(500).json({
+        message: "Error fetching products",
+        error: error.message,
       });
+    });
 };
+
+// Signup
+// exports.signup = async (req, res) => {
+//   try {
+//     console.log("Signup body:", req.body);
+//     const { name, email, password } = req.body;
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser)
+//       return res.status(400).json({ message: "User already exists" });
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const newUser = new User({
+//       name,
+//       email,
+//       password: hashedPassword,
+//     });
+
+//     await newUser.save();
+//     res.status(201).json({ message: "User created successfully" });
+//   } catch (error) {
+//     console.error("Signup error:", error); // This shows the real error
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 // Signup
 exports.signup = async (req, res) => {
   try {
-    console.log('Signup body:', req.body);
-    const { name, email, address, password } = req.body;
-    
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Name, email, and password are required",
+      });
+    }
+
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: "User already exists",
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, address, password: hashedPassword });
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+    });
 
     await newUser.save();
-    res.status(201).json({ message: "User created successfully" });
-    
+
+    const token = jwt.sign(
+      { id: newUser._id },
+      process.env.JWT_SECRET || "secretKey",
+      { expiresIn: "1h" },
+    );
+
+    return res.status(201).json({
+      message: "User created successfully",
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+      },
+    });
   } catch (error) {
-    console.error('Signup error:', error);            // This shows the real error
-    res.status(500).json({ message: "Server error" });
+    console.error("Signup error:", error);
+
+    return res.status(500).json({
+      message: "Server error during signup",
+    });
   }
 };
 
@@ -199,14 +282,23 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid email or password" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid email or password" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid email or password" });
 
-    const token = jwt.sign({ id: user._id }, "secretKey", { expiresIn: "1h" });
+    const token = jwt.sign(
+  { id: user._id },
+  process.env.JWT_SECRET || "secretKey",
+  { expiresIn: "1h" }
+);
 
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -214,4 +306,98 @@ exports.login = async (req, res) => {
 
 
 
+/* Create Order */
+exports.createOrder = async (req, res) => {
+  try {
+    const {
+      orderId,
+      items,
+      customer,
+      paymentMethod,
+      subtotal,
+      deliveryCharge,
+      total,
+    } = req.body;
+
+    if (
+      !orderId ||
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      !customer ||
+      !paymentMethod
+    ) {
+      return res.status(400).json({
+        message: "Please provide valid order details.",
+      });
+    }
+
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "mobile",
+      "address",
+      "city",
+      "state",
+      "pincode",
+    ];
+
+    if (requiredFields.some((field) => !customer[field])) {
+      return res.status(400).json({
+        message: "Please provide complete delivery details.",
+      });
+    }
+
+    if (!["cod", "online"].includes(paymentMethod)) {
+      return res.status(400).json({
+        message: "Invalid payment method.",
+      });
+    }
+
+    const order = await Order.create({
+      user: req.userId,
+      orderId,
+      items,
+      customer,
+      paymentMethod,
+      subtotal,
+      deliveryCharge,
+      total,
+      status: "Order Placed",
+    });
+
+    return res.status(201).json({
+      message: "Order placed successfully.",
+      order,
+    });
+  } catch (error) {
+    console.error("Create order error:", error);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "This order ID already exists.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Unable to place order.",
+    });
+  }
+};
+
+/* Get Logged-in User's Orders */
+exports.getMyOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({
+      user: req.userId,
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({ orders });
+  } catch (error) {
+    console.error("Get orders error:", error);
+
+    return res.status(500).json({
+      message: "Unable to fetch your orders.",
+    });
+  }
+};
 
